@@ -18,15 +18,13 @@ app.get('/', function(request, response) {
   });
 });
 
-app.get('/page', function(req, res) {
-  return res.send('/page');
+app.get('/page/:pageId', function(request, response) {
+  response.send(request.params);
 });
 
 app.listen(3000, function() {
   console.log('Example app listening on port 3000!')
 });
-
-
 
 /*
 var http = require('http');
