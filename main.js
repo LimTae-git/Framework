@@ -23,20 +23,91 @@ app.get('*', function(request, response,next){
 // route, routing
 // app.get('/', (req,res) => res.send('Hello World!'))
 app.get('/', function(request, response) {
-    var title = 'Welcome';
-    var description = 'Hello, Node.js';
-    var list = template.list(request.list);
-    var html = template.HTML(title, list,
-      `
-      <h2>${title}</h2>${description}
-      <img src = "images/hello.jpg" style = "width: 300px; display:block; margin-top: 10px;">
-      `,
-      `<a href="/create">create</a>`
-    );
-    response.send(html);
+  var title = 'Welcome';
+  var description = 'Hello, Node.js';
+  var list = template.list(request.list);
+  var html = template.HTML(title, list,
+    `
+    <h2>${title}</h2>${description}
+    <img src = "images/hello.jpg" style = "width: 300px; display:block; margin-top: 10px;">
+    `,
+    `<a href="/topic/create">create</a>`
+  );
+  response.send(html);
 });
 
-app.get('/page/:pageId', function(request, response, next) {
+app.get('/topic/create', function(request, response) {
+  var title = 'WEB - create';
+  var list = template.list(request.list);
+  var html = template.HTML(title, list, `
+    <form action="/topic/create_process" method="post">
+    <p><input type="text" name="title" placeholder="title"></p>
+    <p>
+    <textarea name="description" placeholder="description"></textarea>
+    </p>
+    <p>
+    <input type="submit">
+    </p>
+    </form>
+    `, '');
+    response.send(html);
+  });
+
+  app.post('/topic/create_process', function(request, response){
+    var post = request.body;
+    var title = post.title;
+    var description = post. description;
+    fs.writeFile(`data/${title}`, description, 'utf8', function(err){
+      response.redirect(`/topic/${title}`)
+    })
+  });
+
+  app.get('/topic/update/:pageId', function(request, response){
+    var filterdId = path.parse(request.params.pageId).base;
+    fs.readFile(`data/${filterdId}`, 'utf8', function(err, description){
+      var title = request.params.pageId;
+      var list = template.list(request.list);
+      var html = template.HTML(title, list,
+        `
+        <form action="/topic/update_process" method="post">
+        <input type = "hidden" name = "id" value = "${title}">
+        <p><input type="text" name="title" placeholder="title" value = "${title}"></p>
+        <p>
+        <textarea name="description" placeholder="description">${description}</textarea>
+        </p>
+        <p>
+        <input type="submit">
+        </p>
+        </form>
+        `,
+        `<a href="/topic/create">create</a> <a href="/topic/update/${title}">update</a>`
+      );
+      response.send(html);
+    });
+  });
+
+  app.post('/topic/update_process', function(request, response){
+    var post = request.body;
+    var id = post.id;
+    var title = post.title;
+    var description = post. description;
+    fs.rename(`data/${id}`, `data/${title}`, function(error){
+      fs.writeFile(`data/${title}`, description, 'utf8', function(err){
+        response.redirect(`/topic/${title}`);
+      })
+    })
+  });
+
+  app.post('/topic/delete_process', function(request, response){
+    var post = request.body;
+    var id = post.id;
+    var filterdId = path.parse(id).base;
+    fs.unlink(`data/${filterdId}`, function(error){
+      response.redirect(`/`);
+    })
+  });
+
+  app.get('/topic/:pageId', function(request, response, next) {
     var filterdId = path.parse(request.params.pageId).base;
     fs.readFile(`data/${filterdId}`, 'utf8', function(err, description){
       if(err){
@@ -50,9 +121,9 @@ app.get('/page/:pageId', function(request, response, next) {
         var list = template.list(request.list);
         var html = template.HTML(title, list,
           `<h2>${sanitizedTitle}</h2>${sanitizedDescription}`,
-          ` <a href="/create">create</a>
-          <a href="/update/${sanitizedTitle}">update</a>
-          <form action = "/delete_process" method = "post">
+          ` <a href="/topic/create">create</a>
+          <a href="/topic/update/${sanitizedTitle}">update</a>
+          <form action = "/topic/delete_process" method = "post">
           <input type = "hidden" name = "id" value = "${sanitizedTitle}">
           <input type = "submit" value = "delete">
           </form>`
@@ -60,79 +131,9 @@ app.get('/page/:pageId', function(request, response, next) {
         response.send(html);
       }
     });
-});
-
-app.get('/create', function(request, response) {
-    var title = 'WEB - create';
-    var list = template.list(request.list);
-    var html = template.HTML(title, list, `
-      <form action="/create_process" method="post">
-      <p><input type="text" name="title" placeholder="title"></p>
-      <p>
-      <textarea name="description" placeholder="description"></textarea>
-      </p>
-      <p>
-      <input type="submit">
-      </p>
-      </form>
-      `, '');
-      response.send(html);
   });
 
-  app.post('/create_process', function(request, response){
-    var post = request.body;
-    var title = post.title;
-    var description = post. description;
-    fs.writeFile(`data/${title}`, description, 'utf8', function(err){
-      response.writeHead(302, {Location: `/?id=${title}`});
-      response.end();
-    })
-  });
 
-  app.get('/update/:pageId', function(request, response){
-      var filterdId = path.parse(request.params.pageId).base;
-      fs.readFile(`data/${filterdId}`, 'utf8', function(err, description){
-        var title = request.params.pageId;
-        var list = template.list(request.list);
-        var html = template.HTML(title, list,
-          `
-          <form action="/update_process" method="post">
-          <input type = "hidden" name = "id" value = "${title}">
-          <p><input type="text" name="title" placeholder="title" value = "${title}"></p>
-          <p>
-          <textarea name="description" placeholder="description">${description}</textarea>
-          </p>
-          <p>
-          <input type="submit">
-          </p>
-          </form>
-          `,
-          `<a href="/create">create</a> <a href="/update?id=${title}">update</a>`
-        );
-        response.send(html);
-      });
-  });
-
-  app.post('/update_process', function(request, response){
-    var post = request.body;
-    var id = post.id;
-    var title = post.title;
-    var description = post. description;
-    fs.rename(`data/${id}`, `data/${title}`, function(error){
-      fs.writeFile(`data/${title}`, description, 'utf8', function(err){
-        response.redirect(`/?id=${title}`);
-      })
-    })
-  });
-
-  app.post('/delete_process', function(request, response){
-    var post = request.body;
-    var id = post.id;
-    var filterdId = path.parse(id).base;
-    fs.unlink(`data/${filterdId}`, function(error){
-      response.redirect(`/`);
-    })
-  });
 
   // 에러처리
   // 미들웨어는 순차적으로 실행되기 때문에 뒤쪽에 위치
